@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'https://api.bemomentiq.com/v1';
+// Use Vercel serverless function as proxy to bypass CORS
+// In production, this will be /api/metrics
+// In development, you can use the full Vercel URL or run locally
+const API_BASE_URL = '/api';
 
 /**
  * Fetch historical TikTok metrics
@@ -9,9 +12,9 @@ const API_BASE_URL = 'https://api.bemomentiq.com/v1';
  */
 export const fetchHistoricalMetrics = async (startDate) => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/tiktok/metrics/historical/`, {
+    const response = await axios.get(`${API_BASE_URL}/metrics`, {
       params: {
-        start_date: "2025-10-29"
+        start_date: startDate
       }
     });
     return response.data;

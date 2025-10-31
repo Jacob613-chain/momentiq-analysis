@@ -84,7 +84,7 @@ const AnalysisPage = () => {
                 <div>
                   <span className="text-gray-600">Period: </span>
                   <span className="font-semibold text-gray-800">
-                    {data.period.start_date} to {data.period.end_date}
+                    2025-10-29 to {data.period.end_date}
                   </span>
                 </div>
                 <div>
