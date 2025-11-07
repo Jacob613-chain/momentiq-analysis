@@ -35,3 +35,23 @@ export const getDateDaysAgo = (days) => {
   return date.toISOString().split('T')[0];
 };
 
+/**
+ * Fetch campaign products with pagination
+ * @param {number} limit - Number of products per page (default: 50)
+ * @param {number} offset - Offset for pagination (default: 0)
+ * @returns {Promise} API response with products data
+ */
+export const fetchCampaignProducts = async (limit = 50, offset = 0) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/campaign-products`, {
+      params: {
+        limit,
+        offset
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching campaign products:', error);
+    throw error;
+  }
+};

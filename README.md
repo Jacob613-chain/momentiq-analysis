@@ -1,4 +1,4 @@
-# TikTok Analytics Dashboard 📊
+# Analytics Dashboard 📊
 
 A beautiful and interactive analytics dashboard for tracking TikTok metrics with smooth, animated charts.
 

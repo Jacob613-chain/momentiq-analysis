@@ -1,21 +1,32 @@
 import { useState, useEffect } from 'react';
-import { Calendar, RefreshCw, TrendingUp } from 'lucide-react';
+import { RefreshCw, TrendingUp } from 'lucide-react';
 import MetricsCards from '../components/MetricsCards';
 import MetricsCharts from '../components/MetricsCharts';
-import { fetchHistoricalMetrics, getDateDaysAgo } from '../services/api';
+import { fetchHistoricalMetrics } from '../services/api';
 
 const AnalysisPage = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [dateRange, setDateRange] = useState(30); // Default to 30 days
 
   const loadData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const startDate = getDateDaysAgo(dateRange);
-      const response = await fetchHistoricalMetrics(startDate);
+      // Always use fixed start date 2025-11-03
+      const fixedStartDate = '2025-11-03';
+      const response = await fetchHistoricalMetrics(fixedStartDate);
+
+      // Calculate total_days based on end_date - 2025-11-03
+      if (response.data && response.data.period) {
+        const startDate = new Date(fixedStartDate);
+        const endDate = new Date(response.data.period.end_date);
+        const diffTime = Math.abs(endDate - startDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end dates
+
+        response.data.period.total_days = diffDays;
+      }
+
       setData(response.data);
     } catch (err) {
       setError('Failed to load metrics data. Please try again.');
@@ -27,12 +38,12 @@ const AnalysisPage = () => {
 
   useEffect(() => {
     loadData();
-  }, [dateRange]);
+  }, []);
 
   const latestMetrics = data?.metrics?.[data.metrics.length - 1];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8 animate-fade-in">
@@ -40,7 +51,7 @@ const AnalysisPage = () => {
             <div>
               <h1 className="text-4xl font-bold text-gray-800 mb-2 flex items-center gap-3">
                 <TrendingUp className="w-10 h-10 text-blue-600" />
-                TikTok Analytics Dashboard
+                Analytics Dashboard
               </h1>
               <p className="text-gray-600">
                 Track your performance metrics and growth over time
@@ -56,27 +67,6 @@ const AnalysisPage = () => {
             </button>
           </div>
 
-          {/* Date Range Selector */}
-          <div className="flex items-center gap-4 bg-white rounded-xl p-4 shadow-md">
-            <Calendar className="w-5 h-5 text-gray-600" />
-            <span className="text-gray-700 font-medium">Date Range:</span>
-            <div className="flex gap-2">
-              {[7, 14, 30, 60, 90].map((days) => (
-                <button
-                  key={days}
-                  onClick={() => setDateRange(days)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
-                    dateRange === days
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {days} days
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Period Info */}
           {data?.period && (
             <div className="mt-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-100">
@@ -84,7 +74,7 @@ const AnalysisPage = () => {
                 <div>
                   <span className="text-gray-600">Period: </span>
                   <span className="font-semibold text-gray-800">
-                    2025-10-29 to {data.period.end_date}
+                    2025-11-03 to {data.period.end_date}
                   </span>
                 </div>
                 <div>

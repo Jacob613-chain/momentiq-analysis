@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, Users, Package, DollarSign, BarChart3 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Users, Package, DollarSign, BarChart3, Box } from 'lucide-react';
 
 const MetricCard = ({ title, value, growth, icon: Icon, color, prefix = '', suffix = '' }) => {
   const hasGrowth = growth !== null && growth !== undefined;
@@ -38,8 +38,8 @@ const MetricCard = ({ title, value, growth, icon: Icon, color, prefix = '', suff
 const MetricsCards = ({ latestMetrics }) => {
   if (!latestMetrics) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {[1, 2, 3, 4].map((i) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        {[1, 2, 3, 4, 5].map((i) => (
           <div key={i} className="bg-white rounded-2xl shadow-lg p-6 animate-pulse">
             <div className="h-12 bg-gray-200 rounded mb-4"></div>
             <div className="h-4 bg-gray-200 rounded mb-2"></div>
@@ -51,7 +51,7 @@ const MetricsCards = ({ latestMetrics }) => {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
       <MetricCard
         title="Total Creators"
         value={latestMetrics.total_creators}
@@ -65,6 +65,13 @@ const MetricsCards = ({ latestMetrics }) => {
         growth={latestMetrics.products_substituted_growth}
         icon={Package}
         color="bg-gradient-to-br from-purple-500 to-purple-600"
+      />
+      <MetricCard
+        title="Total Products in System"
+        value={latestMetrics.total_products_in_system}
+        growth={latestMetrics.products_in_system_growth}
+        icon={Box}
+        color="bg-gradient-to-br from-orange-500 to-orange-600"
       />
       <MetricCard
         title="Avg Products per Creator"
