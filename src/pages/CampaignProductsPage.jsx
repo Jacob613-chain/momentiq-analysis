@@ -9,17 +9,18 @@ const CampaignProductsPage = () => {
   const [error, setError] = useState(null);
   const [limit, setLimit] = useState(50);
   const [offset, setOffset] = useState(0);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filteredProducts, setFilteredProducts] = useState([]);
+  const [searchProductId, setSearchProductId] = useState('');
+  const [searchCampaignId, setSearchCampaignId] = useState('');
+  const [searchProductName, setSearchProductName] = useState('');
   const [downloading, setDownloading] = useState(false);
+  const [isSearchMode, setIsSearchMode] = useState(false); // Track if we're in search mode
 
-  const loadData = async (newLimit = limit, newOffset = offset) => {
+  const loadData = async (newLimit = limit, newOffset = offset, searchFilters = {}) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetchCampaignProducts(newLimit, newOffset);
+      const response = await fetchCampaignProducts(newLimit, newOffset, searchFilters);
       setData(response.data);
-      setFilteredProducts(response.data.products || []);
       setLimit(newLimit);
       setOffset(newOffset);
     } catch (err) {
@@ -34,41 +35,63 @@ const CampaignProductsPage = () => {
     loadData();
   }, []);
 
-  // Filter products based on search query
+  // Perform search using API
   useEffect(() => {
-    if (!data?.products) return;
+    const performSearch = async () => {
+      const hasSearch = searchProductId.trim() || searchCampaignId.trim() || searchProductName.trim();
 
-    if (!searchQuery.trim()) {
-      setFilteredProducts(data.products);
-      return;
-    }
+      if (!hasSearch) {
+        // No search - load normal paginated data
+        setIsSearchMode(false);
+        return;
+      }
 
-    const query = searchQuery.toLowerCase();
-    const filtered = data.products.filter((product) => {
-      return (
-        product.name?.toLowerCase().includes(query) ||
-        product.product_id?.toLowerCase().includes(query) ||
-        product.campaign_id?.toLowerCase().includes(query) ||
-        product.shop_name?.toLowerCase().includes(query) ||
-        product.product_description?.toLowerCase().includes(query)
-      );
-    });
+      // Search mode - fetch from API with search filters
+      setIsSearchMode(true);
+      const searchFilters = {};
+      if (searchProductId.trim()) searchFilters.product_id = searchProductId.trim();
+      if (searchCampaignId.trim()) searchFilters.campaign_id = searchCampaignId.trim();
+      if (searchProductName.trim()) searchFilters.product_name = searchProductName.trim();
 
-    setFilteredProducts(filtered);
-  }, [searchQuery, data]);
+      // Load data with search filters
+      await loadData(limit, 0, searchFilters); // Reset to first page when searching
+    };
+
+    // Debounce search to avoid too many API calls
+    const timeoutId = setTimeout(() => {
+      performSearch();
+    }, 500); // Wait 500ms after user stops typing
+
+    return () => clearTimeout(timeoutId);
+  }, [searchProductId, searchCampaignId, searchProductName]);
 
   const handlePageChange = (newLimit, newOffset) => {
-    setSearchQuery(''); // Clear search when changing pages
-    loadData(newLimit, newOffset);
+    const hasSearch = searchProductId.trim() || searchCampaignId.trim() || searchProductName.trim();
+
+    if (hasSearch) {
+      // If in search mode, maintain search filters when paginating
+      const searchFilters = {};
+      if (searchProductId.trim()) searchFilters.product_id = searchProductId.trim();
+      if (searchCampaignId.trim()) searchFilters.campaign_id = searchCampaignId.trim();
+      if (searchProductName.trim()) searchFilters.product_name = searchProductName.trim();
+      loadData(newLimit, newOffset, searchFilters);
+    } else {
+      // Normal pagination without search
+      loadData(newLimit, newOffset);
+    }
   };
 
   const handleRefresh = () => {
-    setSearchQuery(''); // Clear search on refresh
+    setSearchProductId('');
+    setSearchCampaignId('');
+    setSearchProductName('');
     loadData(limit, offset);
   };
 
   const handleClearSearch = () => {
-    setSearchQuery('');
+    setSearchProductId('');
+    setSearchCampaignId('');
+    setSearchProductName('');
   };
 
   const stripHtmlTags = (html) => {
@@ -86,6 +109,13 @@ const CampaignProductsPage = () => {
       return `"${stringValue.replace(/"/g, '""')}"`;
     }
     return stringValue;
+  };
+
+  // Special function to format IDs as text to prevent Excel scientific notation
+  const formatIDForCSV = (value) => {
+    if (value === null || value === undefined) return '';
+    // Use ="value" format to force Excel to treat as text and preserve full number
+    return `="${String(value)}"`;
   };
 
   const handleDownloadCSV = async () => {
@@ -114,16 +144,20 @@ const CampaignProductsPage = () => {
 
       // Apply search filter if active
       let productsToExport = allProducts;
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
+      const hasSearch = searchProductId.trim() || searchCampaignId.trim() || searchProductName.trim();
+
+      if (hasSearch) {
         productsToExport = allProducts.filter((product) => {
-          return (
-            product.name?.toLowerCase().includes(query) ||
-            product.product_id?.toLowerCase().includes(query) ||
-            product.campaign_id?.toLowerCase().includes(query) ||
-            product.shop_name?.toLowerCase().includes(query) ||
-            product.product_description?.toLowerCase().includes(query)
-          );
+          const productIdMatch = !searchProductId.trim() ||
+            product.product_id?.toLowerCase().includes(searchProductId.toLowerCase());
+
+          const campaignIdMatch = !searchCampaignId.trim() ||
+            product.campaign_id?.toLowerCase().includes(searchCampaignId.toLowerCase());
+
+          const productNameMatch = !searchProductName.trim() ||
+            product.name?.toLowerCase().includes(searchProductName.toLowerCase());
+
+          return productIdMatch && campaignIdMatch && productNameMatch;
         });
       }
 
@@ -154,8 +188,8 @@ const CampaignProductsPage = () => {
       // CSV Rows
       const rows = productsToExport.map((product, index) => [
         index + 1,
-        escapeCSV(product.product_id),
-        escapeCSV(product.campaign_id),
+        formatIDForCSV(product.product_id), // Format as text to prevent scientific notation
+        formatIDForCSV(product.campaign_id), // Format as text to prevent scientific notation
         escapeCSV(product.name),
         escapeCSV(product.shop_name),
         escapeCSV(product.main_image_url),
@@ -180,7 +214,8 @@ const CampaignProductsPage = () => {
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
 
-      const filename = searchQuery
+      const isFiltered = searchProductId || searchCampaignId || searchProductName;
+      const filename = isFiltered
         ? `tap_campaign_products_filtered_${new Date().toISOString().split('T')[0]}.csv`
         : `tap_campaign_products_all_${new Date().toISOString().split('T')[0]}.csv`;
 
@@ -240,31 +275,82 @@ const CampaignProductsPage = () => {
             </div>
           </div>
 
-          {/* Search Bar */}
+          {/* Search Filters */}
           <div className="mb-6">
-            <div className="relative max-w-2xl">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Search className="w-5 h-5 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by product name, ID, campaign ID, shop name, or description..."
-                className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 shadow-sm hover:shadow-md"
-              />
-              {searchQuery && (
+            <div className="flex items-center gap-2 mb-3">
+              <Search className="w-5 h-5 text-purple-600" />
+              <h3 className="text-lg font-semibold text-gray-800">Search Filters</h3>
+              {(searchProductId || searchCampaignId || searchProductName) && (
                 <button
                   onClick={handleClearSearch}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                  className="ml-auto text-sm text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
+                  Clear All
                 </button>
               )}
             </div>
-            {searchQuery && (
-              <div className="mt-2 text-sm text-gray-600">
-                Found <span className="font-semibold text-purple-600">{filteredProducts.length}</span> product(s) matching "{searchQuery}"
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Product ID Search */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Product ID
+                </label>
+                <input
+                  type="text"
+                  value={searchProductId}
+                  onChange={(e) => setSearchProductId(e.target.value)}
+                  placeholder="Enter product ID..."
+                  disabled={loading}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+              </div>
+
+              {/* Campaign ID Search */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Campaign ID
+                </label>
+                <input
+                  type="text"
+                  value={searchCampaignId}
+                  onChange={(e) => setSearchCampaignId(e.target.value)}
+                  placeholder="Enter campaign ID..."
+                  disabled={loading}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+              </div>
+
+              {/* Product Name Search */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Product Name
+                </label>
+                <input
+                  type="text"
+                  value={searchProductName}
+                  onChange={(e) => setSearchProductName(e.target.value)}
+                  placeholder="Enter product name..."
+                  disabled={loading}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+              </div>
+            </div>
+
+            {/* Search Status Messages */}
+            {isSearchMode && data && (
+              <div className="mt-3 text-sm text-gray-600">
+                {loading ? (
+                  <div className="flex items-center gap-2 text-purple-600">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Searching...
+                  </div>
+                ) : (
+                  <div>
+                    Found <span className="font-semibold text-purple-600">{data.pagination.total.toLocaleString()}</span> matching product(s)
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -289,7 +375,7 @@ const CampaignProductsPage = () => {
                 <div>
                   <span className="text-gray-600">Showing: </span>
                   <span className="font-semibold text-gray-800">
-                    {searchQuery ? filteredProducts.length : data.pagination.returned} products
+                    {data.pagination.returned} products
                   </span>
                 </div>
               </div>
@@ -317,12 +403,8 @@ const CampaignProductsPage = () => {
         {/* Products Table */}
         {data && (
           <ProductsTable
-            products={filteredProducts}
-            pagination={{
-              ...data.pagination,
-              returned: filteredProducts.length,
-              total: searchQuery ? filteredProducts.length : data.pagination.total
-            }}
+            products={data.products || []}
+            pagination={data.pagination}
             onPageChange={handlePageChange}
             loading={loading}
           />

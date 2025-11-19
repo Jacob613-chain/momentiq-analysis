@@ -21,11 +21,22 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { limit = 50, offset = 0 } = req.query;
+    const { limit = 50, offset = 0, product_id, campaign_id, product_name } = req.query;
+
+    // Build query parameters
+    const params = new URLSearchParams({
+      limit: limit.toString(),
+      offset: offset.toString(),
+    });
+
+    // Add search parameters if provided
+    if (product_id) params.append('product_id', product_id);
+    if (campaign_id) params.append('campaign_id', campaign_id);
+    if (product_name) params.append('product_name', product_name);
 
     // Make request to the actual API
-    const apiUrl = `https://api.bemomentiq.com/v1/tiktok/partner/campaigns/products/all/?limit=${limit}&offset=${offset}`;
-    
+    const apiUrl = `https://api.bemomentiq.com/v1/tiktok/partner/campaigns/products/all/?${params.toString()}`;
+
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {

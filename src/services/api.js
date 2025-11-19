@@ -36,18 +36,26 @@ export const getDateDaysAgo = (days) => {
 };
 
 /**
- * Fetch campaign products with pagination
+ * Fetch campaign products with pagination and optional search filters
  * @param {number} limit - Number of products per page (default: 50)
  * @param {number} offset - Offset for pagination (default: 0)
+ * @param {Object} searchFilters - Optional search filters { product_id, campaign_id, product_name }
  * @returns {Promise} API response with products data
  */
-export const fetchCampaignProducts = async (limit = 50, offset = 0) => {
+export const fetchCampaignProducts = async (limit = 50, offset = 0, searchFilters = {}) => {
   try {
+    const params = {
+      limit,
+      offset
+    };
+
+    // Add search filters if provided
+    if (searchFilters.product_id) params.product_id = searchFilters.product_id;
+    if (searchFilters.campaign_id) params.campaign_id = searchFilters.campaign_id;
+    if (searchFilters.product_name) params.product_name = searchFilters.product_name;
+
     const response = await axios.get(`${API_BASE_URL}/campaign-products`, {
-      params: {
-        limit,
-        offset
-      }
+      params
     });
     return response.data;
   } catch (error) {
