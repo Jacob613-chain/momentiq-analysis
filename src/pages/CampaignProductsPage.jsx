@@ -13,7 +13,6 @@ const CampaignProductsPage = () => {
   const [searchCampaignId, setSearchCampaignId] = useState('');
   const [searchProductName, setSearchProductName] = useState('');
   const [downloading, setDownloading] = useState(false);
-  const [isSearchMode, setIsSearchMode] = useState(false); // Track if we're in search mode
 
   const loadData = async (newLimit = limit, newOffset = offset, searchFilters = {}) => {
     setLoading(true);
@@ -35,25 +34,16 @@ const CampaignProductsPage = () => {
     loadData();
   }, []);
 
-  // Perform search using API
+  // Perform API-side search with all supported parameters
   useEffect(() => {
     const performSearch = async () => {
-      const hasSearch = searchProductId.trim() || searchCampaignId.trim() || searchProductName.trim();
-
-      if (!hasSearch) {
-        // No search - load normal paginated data
-        setIsSearchMode(false);
-        return;
-      }
-
-      // Search mode - fetch from API with search filters
-      setIsSearchMode(true);
+      // Build search filters object
       const searchFilters = {};
       if (searchProductId.trim()) searchFilters.product_id = searchProductId.trim();
       if (searchCampaignId.trim()) searchFilters.campaign_id = searchCampaignId.trim();
       if (searchProductName.trim()) searchFilters.product_name = searchProductName.trim();
 
-      // Load data with search filters
+      // Load data with search filters (API handles everything server-side)
       await loadData(limit, 0, searchFilters); // Reset to first page when searching
     };
 
@@ -66,19 +56,13 @@ const CampaignProductsPage = () => {
   }, [searchProductId, searchCampaignId, searchProductName]);
 
   const handlePageChange = (newLimit, newOffset) => {
-    const hasSearch = searchProductId.trim() || searchCampaignId.trim() || searchProductName.trim();
+    // Always maintain search filters when paginating
+    const searchFilters = {};
+    if (searchProductId.trim()) searchFilters.product_id = searchProductId.trim();
+    if (searchCampaignId.trim()) searchFilters.campaign_id = searchCampaignId.trim();
+    if (searchProductName.trim()) searchFilters.product_name = searchProductName.trim();
 
-    if (hasSearch) {
-      // If in search mode, maintain search filters when paginating
-      const searchFilters = {};
-      if (searchProductId.trim()) searchFilters.product_id = searchProductId.trim();
-      if (searchCampaignId.trim()) searchFilters.campaign_id = searchCampaignId.trim();
-      if (searchProductName.trim()) searchFilters.product_name = searchProductName.trim();
-      loadData(newLimit, newOffset, searchFilters);
-    } else {
-      // Normal pagination without search
-      loadData(newLimit, newOffset);
-    }
+    loadData(newLimit, newOffset, searchFilters);
   };
 
   const handleRefresh = () => {
@@ -339,7 +323,7 @@ const CampaignProductsPage = () => {
             </div>
 
             {/* Search Status Messages */}
-            {isSearchMode && data && (
+            {(searchProductId || searchCampaignId || searchProductName) && data && (
               <div className="mt-3 text-sm text-gray-600">
                 {loading ? (
                   <div className="flex items-center gap-2 text-purple-600">

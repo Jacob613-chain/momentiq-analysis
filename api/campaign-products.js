@@ -21,20 +21,35 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { limit = 50, offset = 0, product_id, campaign_id, product_name } = req.query;
+    const {
+      limit = 50,
+      offset = 0,
+      product_id,
+      campaign_id,
+      product_name,
+      shop_name,
+      category_id,
+      search,
+      is_available
+    } = req.query;
 
     // Build query parameters
-    const params = new URLSearchParams({
-      limit: limit.toString(),
-      offset: offset.toString(),
-    });
+    const params = new URLSearchParams();
 
-    // Add search parameters if provided
+    // Add pagination parameters
+    params.append('limit', limit.toString());
+    params.append('offset', offset.toString());
+
+    // Add search/filter parameters if provided
     if (product_id) params.append('product_id', product_id);
     if (campaign_id) params.append('campaign_id', campaign_id);
     if (product_name) params.append('product_name', product_name);
+    if (shop_name) params.append('shop_name', shop_name);
+    if (category_id) params.append('category_id', category_id);
+    if (search) params.append('search', search);
+    if (is_available !== undefined) params.append('is_available', is_available);
 
-    // Make request to the actual API
+    // Use the /all/ endpoint which supports all filter parameters
     const apiUrl = `https://api.bemomentiq.com/v1/tiktok/partner/campaigns/products/all/?${params.toString()}`;
 
     const response = await fetch(apiUrl, {
