@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Package, RefreshCw, Search, X } from 'lucide-react';
+import { Package, RefreshCw, Search, X, Download } from 'lucide-react';
 import ProductsTable from '../components/ProductsTable';
 import { fetchCampaignProducts } from '../services/api';
 
@@ -11,6 +11,7 @@ const CampaignProductsPage = () => {
   const [offset, setOffset] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredProducts, setFilteredProducts] = useState([]);
+  const [downloading, setDownloading] = useState(false);
 
   const loadData = async (newLimit = limit, newOffset = offset) => {
     setLoading(true);
@@ -70,6 +71,139 @@ const CampaignProductsPage = () => {
     setSearchQuery('');
   };
 
+  const stripHtmlTags = (html) => {
+    if (!html) return '';
+    const tmp = document.createElement('DIV');
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || '';
+  };
+
+  const escapeCSV = (value) => {
+    if (value === null || value === undefined) return '';
+    const stringValue = String(value);
+    // Escape double quotes and wrap in quotes if contains comma, newline, or quote
+    if (stringValue.includes(',') || stringValue.includes('\n') || stringValue.includes('"')) {
+      return `"${stringValue.replace(/"/g, '""')}"`;
+    }
+    return stringValue;
+  };
+
+  const handleDownloadCSV = async () => {
+    if (!data?.pagination) {
+      alert('No products to download');
+      return;
+    }
+
+    setDownloading(true);
+
+    try {
+      // Fetch ALL products from the API
+      const totalProducts = data.pagination.total;
+      const allProducts = [];
+
+      // Fetch in batches of 1000 (or max allowed by API)
+      const batchSize = 1000;
+      const totalBatches = Math.ceil(totalProducts / batchSize);
+
+      for (let i = 0; i < totalBatches; i++) {
+        const response = await fetchCampaignProducts(batchSize, i * batchSize);
+        if (response.data && response.data.products) {
+          allProducts.push(...response.data.products);
+        }
+      }
+
+      // Apply search filter if active
+      let productsToExport = allProducts;
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        productsToExport = allProducts.filter((product) => {
+          return (
+            product.name?.toLowerCase().includes(query) ||
+            product.product_id?.toLowerCase().includes(query) ||
+            product.campaign_id?.toLowerCase().includes(query) ||
+            product.shop_name?.toLowerCase().includes(query) ||
+            product.product_description?.toLowerCase().includes(query)
+          );
+        });
+      }
+
+      if (productsToExport.length === 0) {
+        alert('No products to download');
+        setDownloading(false);
+        return;
+      }
+
+      // CSV Headers
+      const headers = [
+        'No',
+        'Product ID',
+        'Campaign ID',
+        'Name',
+        'Shop Name',
+        'Main Image URL',
+        'Product Description',
+        'Lowest Price',
+        'Highest Price',
+        'Inventory',
+        'Product Sales',
+        'Open Collaboration Commission Rate (%)',
+        'Partner Commission Rate (%)',
+        'Calculated Commission Rate (%)'
+      ];
+
+      // CSV Rows
+      const rows = productsToExport.map((product, index) => [
+        index + 1,
+        escapeCSV(product.product_id),
+        escapeCSV(product.campaign_id),
+        escapeCSV(product.name),
+        escapeCSV(product.shop_name),
+        escapeCSV(product.main_image_url),
+        escapeCSV(stripHtmlTags(product.product_description)),
+        escapeCSV(product.lowest_price_amount),
+        escapeCSV(product.highest_price_amount),
+        escapeCSV(product.inventory),
+        escapeCSV(product.product_sales),
+        escapeCSV(product.open_collaboration_commission_rate),
+        escapeCSV(product.partner_commission_rate),
+        escapeCSV(product.calculated_commission_rate)
+      ]);
+
+      // Combine headers and rows
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.join(','))
+      ].join('\n');
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+
+      const filename = searchQuery
+        ? `tap_campaign_products_filtered_${new Date().toISOString().split('T')[0]}.csv`
+        : `tap_campaign_products_all_${new Date().toISOString().split('T')[0]}.csv`;
+
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      URL.revokeObjectURL(url);
+
+      // Show success message
+      alert(`Successfully downloaded ${productsToExport.length} products!`);
+    } catch (error) {
+      console.error('Error downloading CSV:', error);
+      alert('Failed to download CSV. Please try again.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div className="py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-[1600px] mx-auto">
@@ -85,14 +219,25 @@ const CampaignProductsPage = () => {
                 Browse all products from partners joined on TAP campaign
               </p>
             </div>
-            <button
-              onClick={handleRefresh}
-              disabled={loading}
-              className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={handleDownloadCSV}
+                disabled={loading || downloading || !data?.pagination}
+                className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                title={data?.pagination ? `Download all ${data.pagination.total.toLocaleString()} products` : 'No products available'}
+              >
+                <Download className={`w-5 h-5 ${downloading ? 'animate-bounce' : ''}`} />
+                {downloading ? 'Downloading All Products...' : `Download All CSV (${data?.pagination?.total.toLocaleString() || 0})`}
+              </button>
+              <button
+                onClick={handleRefresh}
+                disabled={loading}
+                className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
           </div>
 
           {/* Search Bar */}

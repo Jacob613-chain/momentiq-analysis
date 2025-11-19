@@ -55,3 +55,17 @@ export const fetchCampaignProducts = async (limit = 50, offset = 0) => {
     throw error;
   }
 };
+
+/**
+ * Fetch all creators
+ * @returns {Promise} API response with creators data
+ */
+export const fetchCreators = async () => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/creators`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching creators:', error);
+    throw error;
+  }
+};
