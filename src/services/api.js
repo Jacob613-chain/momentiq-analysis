@@ -77,3 +77,28 @@ export const fetchCreators = async () => {
     throw error;
   }
 };
+
+/**
+ * Fetch campaigns with pagination and optional campaign type filter
+ * @param {number} limit - Number of campaigns per page (default: 50)
+ * @param {number} offset - Offset for pagination (default: 0)
+ * @param {string} campaignType - Campaign type filter (all, EXCLUSIVE_TIKTOK_SHOP, GS_SELLING_CAMPAIGNS, SELLER_CAMPAIGNS, MY_CAMPAIGNS)
+ * @returns {Promise} API response with campaigns data
+ */
+export const fetchCampaigns = async (limit = 50, offset = 0, campaignType = 'all') => {
+  try {
+    const params = {
+      limit,
+      offset,
+      campaign_type: campaignType
+    };
+
+    const response = await axios.get(`${API_BASE_URL}/campaigns`, {
+      params
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching campaigns:', error);
+    throw error;
+  }
+};

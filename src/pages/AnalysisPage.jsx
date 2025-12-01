@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, TrendingUp } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 import MetricsCards from '../components/MetricsCards';
 import MetricsCharts from '../components/MetricsCharts';
 import { fetchHistoricalMetrics } from '../services/api';
+import { SkeletonCard, SkeletonChart } from '../components/Skeleton';
 
 const AnalysisPage = () => {
   const [data, setData] = useState(null);
@@ -46,39 +47,29 @@ const AnalysisPage = () => {
     <div className="py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8 animate-fade-in">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <div>
-              <h1 className="text-4xl font-bold text-gray-800 mb-2 flex items-center gap-3">
-                <TrendingUp className="w-10 h-10 text-blue-600" />
-                Analytics Dashboard
-              </h1>
-              <p className="text-gray-600">
-                Track your performance metrics and growth over time
-              </p>
-            </div>
-            <button
-              onClick={loadData}
-              disabled={loading}
-              className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
+        <div className="mb-6 sm:mb-8 animate-fade-in">
+          <div className="mb-6">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-800 mb-2 flex items-center gap-2 sm:gap-3">
+              <TrendingUp className="w-8 h-8 sm:w-10 sm:h-10 text-blue-600" />
+              Analytics Dashboard
+            </h1>
+            <p className="text-sm sm:text-base text-gray-600">
+              Track your performance metrics and growth over time
+            </p>
           </div>
 
           {/* Period Info */}
           {data?.period && (
-            <div className="mt-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-100">
-              <div className="flex items-center gap-6 text-sm">
-                <div>
-                  <span className="text-gray-600">Period: </span>
+            <div className="mt-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 sm:p-6 border border-blue-100">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600">Period:</span>
                   <span className="font-semibold text-gray-800">
                     2025-11-03 to {data.period.end_date}
                   </span>
                 </div>
-                <div>
-                  <span className="text-gray-600">Total Days: </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600">Total Days:</span>
                   <span className="font-semibold text-gray-800">
                     {data.period.total_days}
                   </span>
@@ -97,11 +88,14 @@ const AnalysisPage = () => {
 
         {/* Loading State */}
         {loading && !data && (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-center">
-              <RefreshCw className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-              <p className="text-gray-600 text-lg">Loading metrics data...</p>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+              {[...Array(4)].map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
             </div>
+            <SkeletonChart />
+            <SkeletonChart />
           </div>
         )}
 

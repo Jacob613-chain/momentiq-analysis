@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Package, RefreshCw, Search, X, Download } from 'lucide-react';
+import { Package, Search, X, Download } from 'lucide-react';
 import ProductsTable from '../components/ProductsTable';
 import { fetchCampaignProducts } from '../services/api';
+import { SkeletonSearchBar, SkeletonStats, SkeletonTable } from '../components/Skeleton';
 
 const CampaignProductsPage = () => {
   const [data, setData] = useState(null);
@@ -63,13 +64,6 @@ const CampaignProductsPage = () => {
     if (searchProductName.trim()) searchFilters.product_name = searchProductName.trim();
 
     loadData(newLimit, newOffset, searchFilters);
-  };
-
-  const handleRefresh = () => {
-    setSearchProductId('');
-    setSearchCampaignId('');
-    setSearchProductName('');
-    loadData(limit, offset);
   };
 
   const handleClearSearch = () => {
@@ -227,36 +221,31 @@ const CampaignProductsPage = () => {
     <div className="py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-[1600px] mx-auto">
         {/* Header */}
-        <div className="mb-8 animate-fade-in">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div className="mb-6 sm:mb-8 animate-fade-in">
+          <div className="flex flex-col gap-4 mb-6">
             <div>
-              <h1 className="text-4xl font-bold text-gray-800 mb-2 flex items-center gap-3">
-                <Package className="w-10 h-10 text-purple-600" />
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-800 mb-2 flex items-center gap-2 sm:gap-3">
+                <Package className="w-8 h-8 sm:w-10 sm:h-10 text-purple-600" />
                 TAP Campaign Products
               </h1>
-              <p className="text-gray-600">
+              <p className="text-sm sm:text-base text-gray-600">
                 Browse all products from partners joined on TAP campaign
               </p>
             </div>
-            <div className="flex gap-3">
-              <button
-                onClick={handleDownloadCSV}
-                disabled={loading || downloading || !data?.pagination}
-                className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                title={data?.pagination ? `Download all ${data.pagination.total.toLocaleString()} products` : 'No products available'}
-              >
-                <Download className={`w-5 h-5 ${downloading ? 'animate-bounce' : ''}`} />
+            <button
+              onClick={handleDownloadCSV}
+              disabled={loading || downloading || !data?.pagination}
+              className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base w-full sm:w-auto"
+              title={data?.pagination ? `Download all ${data.pagination.total.toLocaleString()} products` : 'No products available'}
+            >
+              <Download className={`w-4 h-4 sm:w-5 sm:h-5 ${downloading ? 'animate-bounce' : ''}`} />
+              <span className="hidden sm:inline">
                 {downloading ? 'Downloading All Products...' : `Download All CSV (${data?.pagination?.total.toLocaleString() || 0})`}
-              </button>
-              <button
-                onClick={handleRefresh}
-                disabled={loading}
-                className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
-            </div>
+              </span>
+              <span className="sm:hidden">
+                {downloading ? 'Downloading...' : 'Download CSV'}
+              </span>
+            </button>
           </div>
 
           {/* Search Filters */}
@@ -327,7 +316,7 @@ const CampaignProductsPage = () => {
               <div className="mt-3 text-sm text-gray-600">
                 {loading ? (
                   <div className="flex items-center gap-2 text-purple-600">
-                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <Search className="w-4 h-4 animate-pulse" />
                     Searching...
                   </div>
                 ) : (
@@ -341,23 +330,23 @@ const CampaignProductsPage = () => {
 
           {/* Stats Summary */}
           {data?.pagination && (
-            <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-4 border border-purple-100">
-              <div className="flex items-center gap-6 text-sm">
-                <div>
-                  <span className="text-gray-600">Total Products: </span>
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-4 sm:p-6 border border-purple-100">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600">Total Products:</span>
                   <span className="font-semibold text-gray-800">
                     {data.pagination.total.toLocaleString()}
                   </span>
                 </div>
-                <div>
-                  <span className="text-gray-600">Current Page: </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600">Current Page:</span>
                   <span className="font-semibold text-gray-800">
                     {Math.floor(data.pagination.offset / data.pagination.limit) + 1} of{' '}
                     {Math.ceil(data.pagination.total / data.pagination.limit)}
                   </span>
                 </div>
-                <div>
-                  <span className="text-gray-600">Showing: </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600">Showing:</span>
                   <span className="font-semibold text-gray-800">
                     {data.pagination.returned} products
                   </span>
@@ -376,11 +365,10 @@ const CampaignProductsPage = () => {
 
         {/* Loading State */}
         {loading && !data && (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-center">
-              <RefreshCw className="w-12 h-12 text-purple-600 animate-spin mx-auto mb-4" />
-              <p className="text-gray-600 text-lg">Loading campaign products...</p>
-            </div>
+          <div className="space-y-6">
+            <SkeletonSearchBar />
+            <SkeletonStats />
+            <SkeletonTable />
           </div>
         )}
 
